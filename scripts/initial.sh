@@ -2,16 +2,16 @@
 set -euo pipefail
 
 # 用法：
-#   sudo bash scripts/initial.sh justin "ssh-ed25519 AAAA... your@key"
+#   sudo bash scripts/initial.sh user "ssh-ed25519 AAAA... your@key"
 #
 # 参数：
-#   $1 管理用户名，默认 justin
+#   $1 管理用户名，默认 user
 #   $2 SSH 公钥整行内容，必填
 #
 # 环境变量：
 #   TZ_VALUE=UTC
 
-NEW_USER="${1:-justin}"
+NEW_USER="${1:-user}"
 PUBKEY="${2:-}"
 TZ_VALUE="${TZ_VALUE:-UTC}"
 SUDOERS_FILE="/etc/sudoers.d/90-${NEW_USER}-nopasswd"

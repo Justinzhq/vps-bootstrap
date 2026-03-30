@@ -145,7 +145,7 @@ make check
 如果你已经有 SSH key，可以跳过。
 
 ```bash
-ssh-keygen -t ed25519 -C "justin-vps"
+ssh-keygen -t ed25519 -C "user-vps"
 cat ~/.ssh/id_ed25519.pub
 ```
 
@@ -163,7 +163,7 @@ ssh root@YOUR_VPS_IP
 git clone <YOUR_REPO_URL>.git
 cd vps-bootstrap
 make chmod
-sudo make init USER=justin PUBKEY="<你的SSH公钥整行内容>"
+sudo make init USER=user PUBKEY="<你的SSH公钥整行内容>"
 ```
 
 执行完成后，不要立刻关闭当前 root 会话，先新开一个终端验证管理用户登录。
@@ -171,7 +171,7 @@ sudo make init USER=justin PUBKEY="<你的SSH公钥整行内容>"
 ### 5. 用管理用户重新登录
 
 ```bash
-ssh justin@YOUR_VPS_IP
+ssh user@YOUR_VPS_IP
 ```
 
 ### 6. 执行 SSH 加固
@@ -195,7 +195,7 @@ sudo make harden-ssh SSH_PORT=2222 DISABLE_ROOT_LOGIN=true DISABLE_PASSWORD_AUTH
 执行后请用新端口重新登录验证：
 
 ```bash
-ssh -p 2222 justin@YOUR_VPS_IP
+ssh -p 2222 user@YOUR_VPS_IP
 ```
 
 ### 7. 安装 Xray

@@ -12,7 +12,7 @@
           {
             "id": "${XRAY_UUID}",
             "flow": "xtls-rprx-vision",
-            "email": "justin"
+            "email": "user"
           }
         ],
         "decryption": "none"

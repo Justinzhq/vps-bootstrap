@@ -6,7 +6,7 @@ help:
 	@echo "Available targets:"
 	@echo "  make chmod"
 	@echo "  make check"
-	@echo "  make init USER=justin PUBKEY='ssh-ed25519 AAAA...'"
+	@echo "  make init USER=user PUBKEY='ssh-ed25519 AAAA...'"
 	@echo "  make harden-ssh SSH_PORT=2222 DISABLE_ROOT_LOGIN=true DISABLE_PASSWORD_AUTH=true"
 	@echo "  make xray-install"
 	@echo "  make xray-secrets"
@@ -23,7 +23,7 @@ check:
 	bash -n scripts/generate-xray-config.sh
 
 init:
-	bash scripts/initial.sh "$(or $(USER),justin)" "$(PUBKEY)"
+	bash scripts/initial.sh "$(or $(USER),user)" "$(PUBKEY)"
 
 harden-ssh:
 	bash scripts/harden-ssh.sh
