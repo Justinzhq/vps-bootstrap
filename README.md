@@ -93,6 +93,7 @@ vps-bootstrap/
 
 - 可禁用 root SSH 登录
 - 可选修改 SSH 端口
+- 使用 `sshd_config.d` drop-in 写入 SSH 配置
 - 改端口时同步 UFW 和 Fail2Ban
 - 先校验配置，再重启 SSH
 
@@ -100,6 +101,7 @@ vps-bootstrap/
 
 - 禁 root SSH 登录
 - 调整 SSH 端口
+- 避免主配置被 `Include /etc/ssh/sshd_config.d/*.conf` 覆盖
 - 同步 SSH 端口相关防护规则
 - 做进一步收紧
 

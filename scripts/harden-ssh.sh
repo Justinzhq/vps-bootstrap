@@ -14,14 +14,9 @@ SSH_PORT="${SSH_PORT:-22}"
 DISABLE_ROOT_LOGIN="${DISABLE_ROOT_LOGIN:-true}"
 DISABLE_PASSWORD_AUTH="${DISABLE_PASSWORD_AUTH:-true}"
 SSHD_CONFIG="/etc/ssh/sshd_config"
-TMP_CONFIG="$(mktemp)"
+SSHD_CONFIG_DIR="/etc/ssh/sshd_config.d"
+SSHD_DROPIN_FILE="${SSHD_CONFIG_DIR}/99-vps-bootstrap.conf"
 FAIL2BAN_JAIL_LOCAL="/etc/fail2ban/jail.local"
-
-cleanup() {
-  rm -f "$TMP_CONFIG" "$TMP_CONFIG.bak"
-}
-
-trap cleanup EXIT
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "请用 root 运行：sudo SSH_PORT=... bash scripts/harden-ssh.sh"
@@ -45,38 +40,29 @@ if [ "$SSH_PORT" -lt 1 ] || [ "$SSH_PORT" -gt 65535 ]; then
   exit 1
 fi
 
-cp "$SSHD_CONFIG" "$TMP_CONFIG"
-
-set_kv() {
-  local key="$1"
-  local value="$2"
-
-  if grep -qiE "^[#[:space:]]*${key}[[:space:]]+" "$TMP_CONFIG"; then
-    sed -i.bak -E "s|^[#[:space:]]*${key}[[:space:]]+.*|${key} ${value}|I" "$TMP_CONFIG"
-  else
-    printf '%s %s\n' "$key" "$value" >> "$TMP_CONFIG"
-  fi
-}
-
 echo "[*] 调整 SSH 配置..."
-set_kv "Port" "$SSH_PORT"
-set_kv "PubkeyAuthentication" "yes"
-set_kv "PasswordAuthentication" "$( [ "$DISABLE_PASSWORD_AUTH" = "true" ] && echo "no" || echo "yes" )"
-set_kv "KbdInteractiveAuthentication" "no"
-set_kv "ChallengeResponseAuthentication" "no"
-set_kv "UsePAM" "yes"
-set_kv "PermitRootLogin" "$( [ "$DISABLE_ROOT_LOGIN" = "true" ] && echo "no" || echo "prohibit-password" )"
+mkdir -p "$SSHD_CONFIG_DIR"
+
+if ! grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' "$SSHD_CONFIG"; then
+  printf 'Include /etc/ssh/sshd_config.d/*.conf\n' >> "$SSHD_CONFIG"
+fi
+
+cat > "$SSHD_DROPIN_FILE" <<EOF
+Port ${SSH_PORT}
+PubkeyAuthentication yes
+PasswordAuthentication $( [ "$DISABLE_PASSWORD_AUTH" = "true" ] && echo "no" || echo "yes" )
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+UsePAM yes
+PermitRootLogin $( [ "$DISABLE_ROOT_LOGIN" = "true" ] && echo "no" || echo "prohibit-password" )
+EOF
 
 echo "[*] 校验 SSH 配置..."
-sshd -t -f "$TMP_CONFIG"
-
-echo "[*] 应用 SSH 配置..."
-cp "$TMP_CONFIG" "$SSHD_CONFIG"
+sshd -t
 
 echo "[*] 更新防火墙规则..."
 if command -v ufw >/dev/null 2>&1; then
   ufw allow "${SSH_PORT}/tcp"
-  ufw limit "${SSH_PORT}/tcp"
 
   if [ "$SSH_PORT" != "22" ]; then
     ufw delete allow OpenSSH || true
@@ -110,6 +96,7 @@ echo " SSH 加固完成："
 echo " - 端口：${SSH_PORT}"
 echo " - Root SSH 登录禁用：${DISABLE_ROOT_LOGIN}"
 echo " - 密码认证禁用：${DISABLE_PASSWORD_AUTH}"
+echo " - SSH 配置文件：${SSHD_DROPIN_FILE}"
 echo " - UFW 已同步为 SSH 端口 ${SSH_PORT}"
 echo " - Fail2Ban 已同步监控 SSH 端口 ${SSH_PORT}"
 echo " 请先新开一个终端验证 SSH，再关闭当前会话"

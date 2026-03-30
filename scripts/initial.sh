@@ -16,7 +16,8 @@ PUBKEY="${2:-}"
 TZ_VALUE="${TZ_VALUE:-UTC}"
 SUDOERS_FILE="/etc/sudoers.d/90-${NEW_USER}-nopasswd"
 SSHD_CONFIG="/etc/ssh/sshd_config"
-TMP_SSHD_CONFIG="$(mktemp)"
+SSHD_CONFIG_DIR="/etc/ssh/sshd_config.d"
+SSHD_DROPIN_FILE="${SSHD_CONFIG_DIR}/99-vps-bootstrap.conf"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "请用 root 运行：sudo bash scripts/initial.sh <user> \"<pubkey>\""
@@ -68,36 +69,28 @@ chmod 600 "/home/${NEW_USER}/.ssh/authorized_keys"
 chown -R "${NEW_USER}:${NEW_USER}" "/home/${NEW_USER}/.ssh"
 
 echo "[*] 切换为 SSH key-only 登录..."
-cp "$SSHD_CONFIG" "$TMP_SSHD_CONFIG"
+mkdir -p "$SSHD_CONFIG_DIR"
 
-set_sshd_kv() {
-  local key="$1"
-  local value="$2"
+if ! grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' "$SSHD_CONFIG"; then
+  printf 'Include /etc/ssh/sshd_config.d/*.conf\n' >> "$SSHD_CONFIG"
+fi
 
-  if grep -qiE "^[#[:space:]]*${key}[[:space:]]+" "$TMP_SSHD_CONFIG"; then
-    sed -i.bak -E "s|^[#[:space:]]*${key}[[:space:]]+.*|${key} ${value}|I" "$TMP_SSHD_CONFIG"
-  else
-    printf '%s %s\n' "$key" "$value" >> "$TMP_SSHD_CONFIG"
-  fi
-}
-
-set_sshd_kv "PubkeyAuthentication" "yes"
-set_sshd_kv "PasswordAuthentication" "no"
-set_sshd_kv "KbdInteractiveAuthentication" "no"
-set_sshd_kv "ChallengeResponseAuthentication" "no"
-set_sshd_kv "PermitEmptyPasswords" "no"
-set_sshd_kv "UsePAM" "yes"
+cat > "$SSHD_DROPIN_FILE" <<'EOF'
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PermitEmptyPasswords no
+UsePAM yes
+EOF
 
 echo "[*] 校验 SSH 配置..."
-sshd -t -f "$TMP_SSHD_CONFIG"
-cp "$TMP_SSHD_CONFIG" "$SSHD_CONFIG"
-rm -f "$TMP_SSHD_CONFIG" "$TMP_SSHD_CONFIG.bak"
+sshd -t
 
 echo "[*] 配置 UFW..."
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow OpenSSH
-ufw limit OpenSSH
 ufw allow 80/tcp
 ufw allow 443/tcp
 ufw --force enable
