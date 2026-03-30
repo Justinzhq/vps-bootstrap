@@ -36,7 +36,7 @@ apt -y upgrade
 
 echo "[*] 安装基础工具..."
 apt -y install \
-  sudo curl git ufw fail2ban tmux htop \
+  sudo curl git make ufw fail2ban tmux htop \
   ca-certificates gnupg lsb-release jq \
   gettext-base openssh-server openssl
 

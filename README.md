@@ -50,6 +50,7 @@
 
 ```text
 vps-bootstrap/
+├─ LICENSE
 ├─ Makefile
 ├─ README.md
 ├─ .gitignore
@@ -171,6 +172,15 @@ ssh root@YOUR_VPS_IP
 ```
 
 ### 4. 拉仓库并执行底座初始化
+
+如果这台全新 VPS 里还没有 `git` 或 `make`，先安装：
+
+```bash
+apt update
+apt -y install git make
+```
+
+然后再拉仓库并执行初始化：
 
 ```bash
 git clone <YOUR_REPO_URL>.git
@@ -361,6 +371,12 @@ sudo XRAY_UUID="..." \
 - 配置样例拆分
 
 目标是让执行入口更统一。
+
+现在这一步已经完成了第一版：
+
+- 已提供 `Makefile`
+- 已提供 `make check`
+- README 已切到统一 `make` 入口
 
 ### Phase 4：多机与声明式
 
