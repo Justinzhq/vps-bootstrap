@@ -5,28 +5,6 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE_PATH="${BASE_DIR}/templates/xray-config.json.tpl"
 OUT_DIR="/usr/local/etc/xray"
 OUT_PATH="${OUT_DIR}/config.json"
-ENV_FILE="${ENV_FILE:-}"
-
-load_env_file() {
-  local file_path="$1"
-  echo "[*] 加载环境变量文件：${file_path}"
-  set -a
-  # shellcheck disable=SC1090
-  . "$file_path"
-  set +a
-}
-
-if [ -z "$ENV_FILE" ] && [ -f "${BASE_DIR}/.env" ]; then
-  ENV_FILE="${BASE_DIR}/.env"
-fi
-
-if [ -n "$ENV_FILE" ]; then
-  if [ ! -f "$ENV_FILE" ]; then
-    echo "ENV_FILE 不存在：${ENV_FILE}"
-    exit 1
-  fi
-  load_env_file "$ENV_FILE"
-fi
 
 XRAY_PORT="${XRAY_PORT:-443}"
 XRAY_UUID="${XRAY_UUID:-}"

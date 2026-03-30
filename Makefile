@@ -10,7 +10,7 @@ help:
 	@echo "  make harden-ssh SSH_PORT=2222 DISABLE_ROOT_LOGIN=true DISABLE_PASSWORD_AUTH=true"
 	@echo "  make xray-install"
 	@echo "  make xray-secrets"
-	@echo "  make xray-config ENV_FILE=.env"
+	@echo "  make xray-config XRAY_UUID=... REALITY_PRIVATE_KEY=... REALITY_SHORT_ID=..."
 
 chmod:
 	chmod +x scripts/*.sh

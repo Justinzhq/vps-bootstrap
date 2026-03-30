@@ -23,7 +23,7 @@
 
 - 管理用户名，例如 `user`
 - SSH 端口，例如 `22` 或 `2222`
-- `.env` 中的 Xray 参数与密钥材料
+- Xray 参数与密钥材料
 - `REALITY_DEST` 和 `REALITY_SERVER_NAME`
 
 更多说明见 [SECURITY.md](/Users/Zq/vps-bootstrap/SECURITY.md)。
@@ -54,7 +54,6 @@ vps-bootstrap/
 ├─ Makefile
 ├─ README.md
 ├─ .gitignore
-├─ .env.example
 ├─ scripts/
 │  ├─ initial.sh
 │  ├─ harden-ssh.sh
@@ -129,11 +128,6 @@ vps-bootstrap/
 - 模板渲染
 - Xray 配置测试
 - 重启服务
-
-它支持两种来源：
-
-- 环境变量直接传入
-- 从 `.env` 文件加载
 
 ## 四、推荐流程
 
@@ -284,23 +278,7 @@ sudo XRAY_UUID="你的UUID" \
   make xray-config
 ```
 
-### 10. 使用 `.env` 生成服务端配置
-
-先基于样板生成本地配置：
-
-```bash
-cd vps-bootstrap
-cp .env.example .env
-```
-
-编辑 `.env` 后执行：
-
-```bash
-cd vps-bootstrap
-sudo make xray-config ENV_FILE=.env
-```
-
-### 11. 检查服务状态
+### 10. 检查服务状态
 
 ```bash
 sudo systemctl status xray --no-pager
@@ -322,11 +300,10 @@ sudo journalctl -u xray -n 50 --no-pager
 - Public Key：`xray x25519` 生成的 Public key
 - Short ID：你生成的 Short ID
 
-## 六、环境变量说明
+## 六、Xray 参数说明
 
 `generate-xray-config.sh` 支持以下变量：
 
-- `ENV_FILE`，默认不加载；若存在 `.env` 会优先自动加载
 - `XRAY_PORT`，默认 `443`
 - `XRAY_UUID`
 - `REALITY_DEST`，默认 `www.cloudflare.com:443`
@@ -335,12 +312,6 @@ sudo journalctl -u xray -n 50 --no-pager
 - `REALITY_SHORT_ID`
 
 示例：
-
-```bash
-sudo ENV_FILE=.env bash scripts/generate-xray-config.sh
-```
-
-或：
 
 ```bash
 sudo XRAY_UUID="..." \
@@ -357,7 +328,6 @@ sudo XRAY_UUID="..." \
 
 - `scripts/` 放操作逻辑
 - `templates/` 放配置模板
-- `.env.example` 放参数样板
 - `Makefile` 放统一入口
 - `README.md` 放运行手册
 
@@ -383,7 +353,6 @@ sudo XRAY_UUID="..." \
 ### Phase 2：补安全和配置管理
 
 - `harden-ssh.sh`
-- `.env` 加载
 - 更明确的输入校验
 
 目标是降低误操作风险，让 SSH 和配置管理更稳定。
@@ -405,7 +374,7 @@ sudo XRAY_UUID="..." \
 ### Phase 4：多机与声明式
 
 - `inventory`
-- `hosts/<name>.env`
+- `hosts/<name>.sh` 或其他机器参数描述方式
 - Ansible 目录
 
 目标是从单机脚本升级到多主机管理。
