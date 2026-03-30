@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # 参数：
 #   $1 管理用户名，默认 justin
-#   $2 SSH 公钥整行内容，可选
+#   $2 SSH 公钥整行内容，必填
 #
 # 环境变量：
 #   TZ_VALUE=UTC
@@ -14,9 +14,17 @@ set -euo pipefail
 NEW_USER="${1:-justin}"
 PUBKEY="${2:-}"
 TZ_VALUE="${TZ_VALUE:-UTC}"
+SUDOERS_FILE="/etc/sudoers.d/90-${NEW_USER}-nopasswd"
+SSHD_CONFIG="/etc/ssh/sshd_config"
+TMP_SSHD_CONFIG="$(mktemp)"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "请用 root 运行：sudo bash scripts/initial.sh <user> \"<pubkey>\""
+  exit 1
+fi
+
+if [ -z "$PUBKEY" ]; then
+  echo "必须提供 SSH 公钥，避免开启 SSH-only 登录后把自己锁在门外"
   exit 1
 fi
 
@@ -42,6 +50,10 @@ fi
 
 usermod -aG sudo "$NEW_USER"
 
+echo "[*] 配置 sudo 免密码..."
+printf '%s ALL=(ALL:ALL) NOPASSWD:ALL\n' "$NEW_USER" > "$SUDOERS_FILE"
+chmod 440 "$SUDOERS_FILE"
+
 echo "[*] 配置 SSH 公钥..."
 mkdir -p "/home/${NEW_USER}/.ssh"
 chmod 700 "/home/${NEW_USER}/.ssh"
@@ -54,6 +66,32 @@ fi
 
 chmod 600 "/home/${NEW_USER}/.ssh/authorized_keys"
 chown -R "${NEW_USER}:${NEW_USER}" "/home/${NEW_USER}/.ssh"
+
+echo "[*] 切换为 SSH key-only 登录..."
+cp "$SSHD_CONFIG" "$TMP_SSHD_CONFIG"
+
+set_sshd_kv() {
+  local key="$1"
+  local value="$2"
+
+  if grep -qiE "^[#[:space:]]*${key}[[:space:]]+" "$TMP_SSHD_CONFIG"; then
+    sed -i.bak -E "s|^[#[:space:]]*${key}[[:space:]]+.*|${key} ${value}|I" "$TMP_SSHD_CONFIG"
+  else
+    printf '%s %s\n' "$key" "$value" >> "$TMP_SSHD_CONFIG"
+  fi
+}
+
+set_sshd_kv "PubkeyAuthentication" "yes"
+set_sshd_kv "PasswordAuthentication" "no"
+set_sshd_kv "KbdInteractiveAuthentication" "no"
+set_sshd_kv "ChallengeResponseAuthentication" "no"
+set_sshd_kv "PermitEmptyPasswords" "no"
+set_sshd_kv "UsePAM" "yes"
+
+echo "[*] 校验 SSH 配置..."
+sshd -t -f "$TMP_SSHD_CONFIG"
+cp "$TMP_SSHD_CONFIG" "$SSHD_CONFIG"
+rm -f "$TMP_SSHD_CONFIG" "$TMP_SSHD_CONFIG.bak"
 
 echo "[*] 配置 UFW..."
 ufw default deny incoming
@@ -80,13 +118,15 @@ EOF
 
 systemctl enable --now fail2ban
 systemctl enable --now ssh || systemctl enable --now sshd || true
+systemctl restart ssh || systemctl restart sshd || true
 
 echo "============================"
 echo " 初始化完成："
 echo " - 管理用户：${NEW_USER}"
-echo " - 已加入 sudo 组"
+echo " - 已加入 sudo 组，并配置为免密码 sudo"
+echo " - SSH 已切换为 key-only 登录（已禁用密码认证）"
 echo " - UFW 已启用（OpenSSH + 80 + 443）"
 echo " - Fail2Ban 已启用"
 echo " - envsubst 已可用"
-echo " 请退出后使用 ${NEW_USER} 重新登录"
+echo " 请保留当前会话，先新开终端验证 ${NEW_USER} 登录"
 echo "============================"

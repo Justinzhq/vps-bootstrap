@@ -3,7 +3,8 @@
 用于新 VPS 的标准初始化仓库，当前聚焦：
 
 - 非 root 管理用户
-- SSH 公钥登录
+- SSH-only 登录
+- 默认 sudo 免密码
 - UFW 防火墙
 - Fail2Ban
 - Xray（VLESS + REALITY）
@@ -58,22 +59,32 @@ vps-bootstrap/
 - 更新系统包
 - 安装基础工具
 - 创建 sudo 管理用户
+- 配置免密码 sudo
 - 写入 SSH 公钥
+- 关闭 SSH 密码认证
 - 启用 UFW
 - 启用 Fail2Ban
 
-它的目标不是“极限加固”，而是先把机器拉到安全可登录、可继续操作的状态。
+它的目标是把机器一次拉到“安全可登录、可继续操作”的状态：
+
+- 管理用户默认 `sudo` 免密码
+- SSH 默认改为 key-only 登录
+
+因此运行时必须传入可用的 SSH 公钥。
 
 ### `scripts/harden-ssh.sh`
 
 负责第二阶段 SSH 加固：
 
 - 可禁用 root SSH 登录
-- 可禁用密码认证
 - 可选修改 SSH 端口
 - 先校验配置，再重启 SSH
 
-它故意从 `initial.sh` 中拆出来，是为了避免第一次初始化时把自己锁在门外。
+由于 `initial.sh` 已默认禁用密码认证，因此这个脚本现在主要负责：
+
+- 禁 root SSH 登录
+- 调整 SSH 端口
+- 做进一步收紧
 
 ### `scripts/install-xray.sh`
 
@@ -136,7 +147,7 @@ chmod +x scripts/*.sh
 bash scripts/initial.sh justin "<你的SSH公钥整行内容>"
 ```
 
-执行完成后，退出 root。
+执行完成后，不要立刻关闭当前 root 会话，先新开一个终端验证管理用户登录。
 
 ### 5. 用管理用户重新登录
 
@@ -146,7 +157,9 @@ ssh justin@YOUR_VPS_IP
 
 ### 6. 执行 SSH 加固
 
-先确认你已经能用管理用户 + SSH key 正常登录，再执行：
+`initial.sh` 已经默认切到 SSH key-only 登录。
+
+如果你还要进一步禁用 root SSH 登录，先确认你已经能用管理用户 + SSH key 正常登录，再执行：
 
 ```bash
 cd vps-bootstrap
@@ -308,7 +321,7 @@ sudo XRAY_UUID="..." \
 - `.env` 加载
 - 更明确的输入校验
 
-目标是降低误操作风险，让配置更稳定。
+目标是降低误操作风险，让 SSH 和配置管理更稳定。
 
 ### Phase 3：补工程化入口
 
