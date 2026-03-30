@@ -15,6 +15,19 @@
 2. 把所有操作固化为脚本和模板。
 3. 后续让 agent 只改这个仓库，而不是直接在 VPS 上即兴操作。
 
+## 使用前提醒
+
+这是一个公开仓库，里面的用户名、端口、域名和配置值都是示例。
+
+首次部署到真实 VPS 前，请至少确认这些内容已经按你的环境调整：
+
+- 管理用户名，例如 `user`
+- SSH 端口，例如 `22` 或 `2222`
+- `.env` 中的 Xray 参数与密钥材料
+- `REALITY_DEST` 和 `REALITY_SERVER_NAME`
+
+更多说明见 [SECURITY.md](/Users/Zq/vps-bootstrap/SECURITY.md)。
+
 ## 一、工程定位
 
 这是一个“首阶段可落地”的 VPS bootstrap 工程，不是大而全的运维平台。
