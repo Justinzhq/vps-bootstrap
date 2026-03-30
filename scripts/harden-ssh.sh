@@ -15,8 +15,26 @@ DISABLE_ROOT_LOGIN="${DISABLE_ROOT_LOGIN:-true}"
 DISABLE_PASSWORD_AUTH="${DISABLE_PASSWORD_AUTH:-true}"
 SSHD_CONFIG="/etc/ssh/sshd_config"
 SSHD_CONFIG_DIR="/etc/ssh/sshd_config.d"
-SSHD_DROPIN_FILE="${SSHD_CONFIG_DIR}/99-vps-bootstrap.conf"
+SSHD_DROPIN_FILE="${SSHD_CONFIG_DIR}/10-vps-bootstrap.conf"
+LEGACY_SSHD_DROPIN_FILE="${SSHD_CONFIG_DIR}/99-vps-bootstrap.conf"
 FAIL2BAN_JAIL_LOCAL="/etc/fail2ban/jail.local"
+CLOUD_INIT_CONFIG_DIR="/etc/cloud/cloud.cfg.d"
+CLOUD_INIT_SSH_FILE="${CLOUD_INIT_CONFIG_DIR}/99-vps-bootstrap-ssh.cfg"
+
+strip_managed_sshd_keys_from_main() {
+  local tmp_file
+  tmp_file="$(mktemp)"
+
+  awk '
+    /^[[:space:]]*(Port|PubkeyAuthentication|PasswordAuthentication|KbdInteractiveAuthentication|ChallengeResponseAuthentication|PermitEmptyPasswords|UsePAM|PermitRootLogin)[[:space:]]+/ {
+      next
+    }
+    { print }
+  ' "$SSHD_CONFIG" > "$tmp_file"
+
+  cp "$tmp_file" "$SSHD_CONFIG"
+  rm -f "$tmp_file"
+}
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "请用 root 运行：sudo SSH_PORT=... bash scripts/harden-ssh.sh"
@@ -42,10 +60,13 @@ fi
 
 echo "[*] 调整 SSH 配置..."
 mkdir -p "$SSHD_CONFIG_DIR"
+rm -f "$LEGACY_SSHD_DROPIN_FILE"
 
 if ! grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' "$SSHD_CONFIG"; then
   printf 'Include /etc/ssh/sshd_config.d/*.conf\n' >> "$SSHD_CONFIG"
 fi
+
+strip_managed_sshd_keys_from_main
 
 cat > "$SSHD_DROPIN_FILE" <<EOF
 Port ${SSH_PORT}
@@ -56,6 +77,13 @@ ChallengeResponseAuthentication no
 UsePAM yes
 PermitRootLogin $( [ "$DISABLE_ROOT_LOGIN" = "true" ] && echo "no" || echo "prohibit-password" )
 EOF
+
+if [ -d "$CLOUD_INIT_CONFIG_DIR" ]; then
+  echo "[*] 同步 cloud-init SSH 策略..."
+  cat > "$CLOUD_INIT_SSH_FILE" <<EOF
+ssh_pwauth: $( [ "$DISABLE_PASSWORD_AUTH" = "true" ] && echo "false" || echo "true" )
+EOF
+fi
 
 echo "[*] 校验 SSH 配置..."
 sshd -t
@@ -89,6 +117,7 @@ if [ -f "$FAIL2BAN_JAIL_LOCAL" ]; then
 fi
 
 echo "[*] 重启 SSH 服务..."
+systemctl disable --now ssh.socket 2>/dev/null || true
 systemctl restart ssh || systemctl restart sshd
 
 echo "============================"
@@ -99,5 +128,6 @@ echo " - 密码认证禁用：${DISABLE_PASSWORD_AUTH}"
 echo " - SSH 配置文件：${SSHD_DROPIN_FILE}"
 echo " - UFW 已同步为 SSH 端口 ${SSH_PORT}"
 echo " - Fail2Ban 已同步监控 SSH 端口 ${SSH_PORT}"
+echo " - 若系统启用了 cloud-init，已同步 ssh_pwauth"
 echo " 请先新开一个终端验证 SSH，再关闭当前会话"
 echo "============================"
