@@ -171,7 +171,7 @@ cat ~/.ssh/id_ed25519.pub
 ssh root@YOUR_VPS_IP
 ```
 
-### 4. 拉仓库并执行底座初始化
+### 4. 用 root 拉仓库并执行底座初始化
 
 如果这台全新 VPS 里还没有 `git` 或 `make`，先安装：
 
@@ -191,11 +191,29 @@ sudo make init USER=user PUBKEY="<你的SSH公钥整行内容>"
 
 执行完成后，不要立刻关闭当前 root 会话，先新开一个终端验证管理用户登录。
 
-### 5. 用管理用户重新登录
+### 5. 用管理用户重新登录并重新拉仓库
+
+先在当前 root 会话里删除 root 家目录下的仓库副本：
+
+```bash
+rm -rf /root/vps-bootstrap
+```
+
+然后用管理用户重新登录：
 
 ```bash
 ssh user@YOUR_VPS_IP
 ```
+
+重新登录后，在 `user` 家目录下重新拉一份仓库：
+
+```bash
+git clone <YOUR_REPO_URL>.git
+cd vps-bootstrap
+make chmod
+```
+
+从这里开始，后续操作都基于 `user` 家目录下这份仓库进行，不再使用 root 下的副本。
 
 ### 6. 执行 SSH 加固
 
