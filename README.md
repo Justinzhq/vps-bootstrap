@@ -78,12 +78,14 @@ vps-bootstrap/
 
 - 可禁用 root SSH 登录
 - 可选修改 SSH 端口
+- 改端口时同步 UFW 和 Fail2Ban
 - 先校验配置，再重启 SSH
 
 由于 `initial.sh` 已默认禁用密码认证，因此这个脚本现在主要负责：
 
 - 禁 root SSH 登录
 - 调整 SSH 端口
+- 同步 SSH 端口相关防护规则
 - 做进一步收紧
 
 ### `scripts/install-xray.sh`

@@ -15,6 +15,13 @@ DISABLE_ROOT_LOGIN="${DISABLE_ROOT_LOGIN:-true}"
 DISABLE_PASSWORD_AUTH="${DISABLE_PASSWORD_AUTH:-true}"
 SSHD_CONFIG="/etc/ssh/sshd_config"
 TMP_CONFIG="$(mktemp)"
+FAIL2BAN_JAIL_LOCAL="/etc/fail2ban/jail.local"
+
+cleanup() {
+  rm -f "$TMP_CONFIG" "$TMP_CONFIG.bak"
+}
+
+trap cleanup EXIT
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "请用 root 运行：sudo SSH_PORT=... bash scripts/harden-ssh.sh"
@@ -70,17 +77,40 @@ echo "[*] 更新防火墙规则..."
 if command -v ufw >/dev/null 2>&1; then
   ufw allow "${SSH_PORT}/tcp"
   ufw limit "${SSH_PORT}/tcp"
+
+  if [ "$SSH_PORT" != "22" ]; then
+    ufw delete allow OpenSSH || true
+    ufw delete limit OpenSSH || true
+    ufw delete allow 22/tcp || true
+    ufw delete limit 22/tcp || true
+  fi
+fi
+
+echo "[*] 同步 Fail2Ban SSH 端口..."
+if [ -f "$FAIL2BAN_JAIL_LOCAL" ]; then
+  awk -v ssh_port="$SSH_PORT" '
+    BEGIN { in_sshd = 0 }
+    /^\[sshd\]/ { in_sshd = 1; print; next }
+    /^\[/ && $0 != "[sshd]" { in_sshd = 0; print; next }
+    in_sshd && /^[[:space:]]*port[[:space:]]*=/ {
+      print "port     = " ssh_port
+      next
+    }
+    { print }
+  ' "$FAIL2BAN_JAIL_LOCAL" > "${FAIL2BAN_JAIL_LOCAL}.tmp"
+  mv "${FAIL2BAN_JAIL_LOCAL}.tmp" "$FAIL2BAN_JAIL_LOCAL"
+  systemctl restart fail2ban || true
 fi
 
 echo "[*] 重启 SSH 服务..."
 systemctl restart ssh || systemctl restart sshd
-
-rm -f "$TMP_CONFIG" "$TMP_CONFIG.bak"
 
 echo "============================"
 echo " SSH 加固完成："
 echo " - 端口：${SSH_PORT}"
 echo " - Root SSH 登录禁用：${DISABLE_ROOT_LOGIN}"
 echo " - 密码认证禁用：${DISABLE_PASSWORD_AUTH}"
+echo " - UFW 已同步为 SSH 端口 ${SSH_PORT}"
+echo " - Fail2Ban 已同步监控 SSH 端口 ${SSH_PORT}"
 echo " 请先新开一个终端验证 SSH，再关闭当前会话"
 echo "============================"
