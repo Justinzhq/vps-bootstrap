@@ -37,6 +37,7 @@
 
 ```text
 vps-bootstrap/
+├─ Makefile
 ├─ README.md
 ├─ .gitignore
 ├─ .env.example
@@ -116,6 +117,22 @@ vps-bootstrap/
 
 ## 四、推荐流程
 
+### 0. 常用入口
+
+仓库现在提供一个轻量 `Makefile`，用于统一执行入口。
+
+先查看可用命令：
+
+```bash
+make help
+```
+
+本地快速检查脚本语法：
+
+```bash
+make check
+```
+
 ### 1. 新机重装系统
 
 建议重装成：
@@ -145,8 +162,8 @@ ssh root@YOUR_VPS_IP
 ```bash
 git clone <YOUR_REPO_URL>.git
 cd vps-bootstrap
-chmod +x scripts/*.sh
-bash scripts/initial.sh justin "<你的SSH公钥整行内容>"
+make chmod
+sudo make init USER=justin PUBKEY="<你的SSH公钥整行内容>"
 ```
 
 执行完成后，不要立刻关闭当前 root 会话，先新开一个终端验证管理用户登录。
@@ -165,16 +182,14 @@ ssh justin@YOUR_VPS_IP
 
 ```bash
 cd vps-bootstrap
-sudo SSH_PORT=22 DISABLE_ROOT_LOGIN=true DISABLE_PASSWORD_AUTH=true \
-  bash scripts/harden-ssh.sh
+sudo make harden-ssh SSH_PORT=22 DISABLE_ROOT_LOGIN=true DISABLE_PASSWORD_AUTH=true
 ```
 
 如果要顺便改 SSH 端口，比如改到 `2222`：
 
 ```bash
 cd vps-bootstrap
-sudo SSH_PORT=2222 DISABLE_ROOT_LOGIN=true DISABLE_PASSWORD_AUTH=true \
-  bash scripts/harden-ssh.sh
+sudo make harden-ssh SSH_PORT=2222 DISABLE_ROOT_LOGIN=true DISABLE_PASSWORD_AUTH=true
 ```
 
 执行后请用新端口重新登录验证：
@@ -187,14 +202,14 @@ ssh -p 2222 justin@YOUR_VPS_IP
 
 ```bash
 cd vps-bootstrap
-sudo bash scripts/install-xray.sh
+sudo make xray-install
 ```
 
 ### 8. 生成 REALITY 所需密钥材料
 
 ```bash
 cd vps-bootstrap
-sudo bash scripts/gen-reality-secrets.sh
+sudo make xray-secrets
 ```
 
 记录输出的：
@@ -219,7 +234,7 @@ sudo XRAY_UUID="你的UUID" \
   REALITY_SHORT_ID="你的ShortID" \
   REALITY_DEST="www.cloudflare.com:443" \
   REALITY_SERVER_NAME="www.cloudflare.com" \
-  bash scripts/generate-xray-config.sh
+  make xray-config
 ```
 
 ### 10. 使用 `.env` 生成服务端配置
@@ -235,7 +250,7 @@ cp .env.example .env
 
 ```bash
 cd vps-bootstrap
-sudo ENV_FILE=.env bash scripts/generate-xray-config.sh
+sudo make xray-config ENV_FILE=.env
 ```
 
 ### 11. 检查服务状态
@@ -296,6 +311,7 @@ sudo XRAY_UUID="..." \
 - `scripts/` 放操作逻辑
 - `templates/` 放配置模板
 - `.env.example` 放参数样板
+- `Makefile` 放统一入口
 - `README.md` 放运行手册
 
 也就是说：
